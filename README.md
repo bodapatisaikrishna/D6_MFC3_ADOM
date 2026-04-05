@@ -1,330 +1,361 @@
-# ADOM: ADMM-Based Optimization Model for Stripe Noise Removal in Remote Sensing Images
+<img width="481" height="180" alt="image" src="https://github.com/user-attachments/assets/511e5e4b-3a81-4703-845c-5f531513ff7a" />
 
-A MATLAB implementation of the **ADOM** algorithm for removing stripe noise from remote sensing images (RSI). This project extends the original paper to support **vertical**, **horizontal**, **diagonal**, and **bidirectional** stripe noise removal.
 
-> Based on: *"ADOM: ADMM-Based Optimization Model for Stripe Noise Removal in Remote Sensing Image"*  
-> Namwon Kim, Seong-Soo Han, Chang-Sung Jeong — IEEE Access, Vol. 11, 2023  
-> DOI: [10.1109/ACCESS.2023.3319268](https://doi.org/10.1109/ACCESS.2023.3319268)
 
----
+--- ADOM:ADMM-Based Optimization Model  for Stripe Noise Removal
+      22MAT220
+Mathematics for Computing 3
 
-## Table of Contents
+##  Team Members
 
-1. [Overview](#overview)
-2. [Mathematical Foundation](#mathematical-foundation)
-   - [Problem Formulation](#problem-formulation)
-   - [Objective Function](#objective-function)
-   - [Constrained Objective Function](#constrained-objective-function)
-   - [Augmented Lagrangian Function](#augmented-lagrangian-function)
-3. [Optimization Process — 4 Steps Per Iteration](#optimization-process--4-steps-per-iteration)
-   - [Step 1: Weight Control](#step-1-weight-control)
-   - [Step 2: Evidence-Based Starting Point Control](#step-2-evidence-based-starting-point-control)
-   - [Step 3: Momentum-Based Step-Size Control](#step-3-momentum-based-step-size-control)
-   - [Step 4: ADMM Subproblem Solving](#step-4-admm-based-subproblem-solving)
-   - [Convergence Check](#convergence-check)
-4. [Code File Explanations](#code-file-explanations)
-   - [ADOM_vert.mlx](#1-adom_vertmlx--vertical-stripe-removal)
-   - [ADOM_hori.mlx](#2-adom_horimlx--horizontal-stripe-removal)
-   - [ADOM_diag.mlx](#3-adom_diagmlx--diagonal-stripe-removal)
-   - [ADOM_2D.mlx](#4-adom_2dmlx--bidirectional-stripe-removal)
-   - [ADOM_stripe.mlx](#5-adom_stripemlx--synthetic-stripe-noise-generator)
-   - [ADOM_striperemoval.mlx](#6-adom_striperemovalmlx--load-and-remove-stripe-noise)
-   - [All-destripe.mlx](#7-all-destripemlx--unified-multi-direction-removal)
-5. [Repository Structure](#repository-structure)
-6. [Requirements](#requirements)
-7. [Getting Started](#getting-started)
-8. [Parameters Reference](#parameters-reference)
-9. [Computational Complexity](#computational-complexity)
-10. [Citation](#citation)
-11. [License](#license)
+B SAI KRISHNA - CB.SC.U4AIE24308
+D NAGA SHIVA - CB.SC.U4AIE24315
+E SAI MOHITH  - CB.SC.U4AIE24316
+I MAHALAKSHMI - CB.SC.U4AIE24322
+
+
 
 ---
 
-## Overview
+##  Table of Contents
 
-Remote sensing images (RSI) acquired from satellites or airborne platforms frequently suffer from **stripe noise** — systematic linear artifacts caused by:
-- Differences in detector gain and offset between sensor elements
-- Sensor calibration errors during image acquisition
-- Physical gaps between detector elements in pushbroom-type sensors
-
-Stripe noise degrades image quality and negatively affects downstream tasks such as land-cover classification, object detection, and environmental monitoring.
-
-**ADOM** removes this noise by modeling the observed image as a sum of a clean image and a stripe noise component, and then solving an optimization problem to separate them. Instead of directly subtracting noise estimates, ADOM **iteratively refines the stripe estimate S** using a combination of adaptive weighting and accelerated ADMM.
-
-The key innovations over prior methods are:
-1. **Weighted norms** that adapt at every iteration so stripe noise is accurately detected even when it resembles real image texture
-2. **ADMM-based acceleration** using momentum and evidence-based starting points for faster convergence
+1. [Abstract](#abstract)
+2. [Introduction](#introduction)
+3. [Methodology](#methodology)
+4. [Dataset](#dataset)
+5. [Results](#results)
+6. [Conclusion](#conclusion)
+7. [References](#references)
 
 ---
 
-## Mathematical Foundation
+##  Abstract
 
-### Problem Formulation
-
-The degradation model assumes stripe noise is **additive**:
-
-```
-O = D + S
-```
-
-- `O in R^(m x n)` — Observed (noisy) image with m rows and n columns
-- `D in R^(m x n)` — Desired clean image (unknown)
-- `S in R^(m x n)` — Stripe noise component (what we solve for)
-
-Once S is found, the clean image is recovered as:
-
-```
-D = O - S
-```
-
-This is more effective than directly subtracting a rough noise estimate because we solve for S through a principled optimization that uses structural knowledge about what stripe noise looks like.
+Stripe noise is a common and detrimental artifact in remote sensing images (RSI), arising from physical non-uniformities in satellite sensor arrays. This project implements **ADOM (ADMM-Based Optimization Model)**, a state-of-the-art optimization framework for stripe noise removal, extended to handle vertical, horizontal, diagonal, and multi-directional stripe corruptions in 2D grayscale images. The model formulates stripe extraction as a constrained convex optimization problem and solves it efficiently using the Alternating Direction Method of Multipliers (ADMM), augmented with a weight-based detection strategy and an acceleration mechanism comprising evidence-based starting point control and momentum-based step-size control. The implementation is carried out in MATLAB and tested on synthetic stripe-corrupted remote sensing images, demonstrating effective noise suppression while preserving fine spatial detail.
 
 ---
 
-### Objective Function
+##  Introduction
 
-The core objective function (for vertical stripe removal) is:
+### Background and Motivation
 
-```
-argmin_S { ||grad_y S||_1  +  lambda1 * ||grad_x(O - S)||_{wn,1}  +  lambda2 * ||S||_{wg,2,1} }
-```
+Remote sensing images (RSI) acquired by satellite and airborne sensors are indispensable tools in modern science and engineering. They support a wide range of critical real-world applications including Earth observation, land-use and land-cover classification, urban planning, agricultural monitoring, climate change analysis, natural disaster response, and environmental surveillance. Satellites such as NASA's Landsat, ESA's Sentinel series, and hyperspectral platforms like EO-1 Hyperion and MODIS continuously generate large volumes of image data that form the backbone of geospatial intelligence.
 
-Each of the three terms encodes a different piece of prior knowledge about stripe noise:
+However, the quality of remote sensing images is frequently compromised by **stripe noise** — a form of structured, systematic degradation that manifests as bright or dark bands running vertically, horizontally, or diagonally across the image. This noise type is distinct from random (Gaussian) noise because it is spatially correlated, direction-dependent, and often non-periodic and non-uniform in intensity.
+
+### Origin and Nature of Stripe Noise
+
+Stripe noise in RSI arises primarily from hardware-level imperfections in the imaging sensors. Modern satellites use **push-broom** or **whisk-broom** scanning systems, where individual detector elements (pixels in the sensor array) scan the Earth's surface in parallel. Each detector element has its own gain and bias characteristics, and even small calibration differences between detectors — caused by temperature variations, aging electronics, or manufacturing tolerances — appear as persistent stripes in the final image.
+
+The key properties that make stripe noise particularly difficult to remove are:
+
+- **Non-periodicity:** Stripes do not occur at fixed, regular intervals. They appear randomly across different columns, rows, or diagonals.
+- **Non-uniformity:** The intensity of each stripe varies independently — some stripes are faint while others are highly prominent.
+- **Structural similarity to image content:** Stripe noise can closely mimic genuine image structures such as roads, field boundaries, and building edges, making it difficult to distinguish noise from signal without sophisticated models.
+- **Multi-directionality:** Stripes can appear simultaneously in vertical, horizontal, and diagonal directions, especially in multi-sensor or multi-pass acquisition systems.
+
+### Why Stripe Noise is Dangerous for Applications
+
+Unremoved stripe noise causes cascading problems in downstream RSI processing pipelines:
+
+- **Classification errors:** Stripe patterns confuse spectral classifiers, leading to incorrect land-cover labels.
+- **Target detection failures:** Stripes masquerade as linear features such as roads, rivers, or runways in object detection algorithms.
+- **Change detection artifacts:** Temporal differences caused by stripe noise are falsely flagged as genuine land-use changes between acquisition dates.
+- **Hyperspectral analysis degradation:** In hyperspectral images, stripes corrupt the spectral signature of ground materials, invalidating abundance estimation and unmixing.
+
+### Limitations of Existing Destriping Methods
+
+Several categories of destriping methods have been proposed in the literature, each with its own limitations:
+
+**1. Filter-Based Methods:** Simple spatial or frequency-domain filters (e.g., notch filters, Fourier filtering) can suppress periodic stripes but fail on non-periodic, non-uniform stripe patterns because the stripe frequency overlaps with genuine image content.
+
+**2. Statistics-Based Methods (Moment Matching, Histogram Equalization):** These approaches equalize the statistical properties (mean, variance) across detector elements. They are computationally fast but assume stripes are stationary and purely multiplicative/additive in a fixed statistical sense — an assumption that breaks down for complex scenes.
+
+**3. Variational/Optimization-Based Methods (e.g., UTV, GSR, DLS, LRHP):** These formulate destriping as a regularized optimization problem using priors such as total variation (TV) or low-rank structure. While effective, many of these methods are computationally expensive and struggle to separate stripe noise from fine image details such as edges and textures with similar directionality.
+
+**4. Deep Learning-Based Methods (e.g., DnCNN, Wavelet-DNN):** Neural networks trained on large image datasets can achieve impressive destriping but require massive labelled training data, are sensitive to domain shifts between satellite sensors, and are computationally heavy at inference time.
+
+### Motivation for ADOM
+
+The ADOM framework, proposed by Kim, Han, and Jeong (IEEE Access, 2023), addresses the above limitations by:
+
+1. **Formulating stripe noise removal as a convex optimization problem** that explicitly models the directional properties of stripe noise — its smoothness along the stripe direction and sparsity across the stripe direction.
+2. **Introducing adaptive weighted norms** that dynamically adjust per-group (per-column, per-row, or per-diagonal) weights based on the residual between successive estimates, enabling the model to distinguish genuine image edges from stripe noise even when they have similar gradient magnitudes.
+3. **Accelerating convergence with two novel control strategies** — evidence-based starting point control and momentum-based step-size control — that together significantly reduce the number of ADMM iterations needed for convergence while maintaining solution quality.
+
+This project implements the ADOM framework in MATLAB and extends it to handle all three stripe directions — vertical, horizontal, and diagonal — both independently and in a sequential multi-directional pipeline. This makes it applicable to the full range of stripe noise corruption patterns encountered in real remote sensing sensor systems.
 
 ---
 
-#### Term 1: `||grad_y S||_1` — Vertical Smoothness of Stripe Noise
+##  Methodology
 
-**Math:**
+### 3.1 Image Degradation Model
+
+The fundamental assumption is that an observed corrupted remote sensing image **O** is formed by additively superimposing stripe noise **S** onto the clean latent image **X**:
+
 ```
-grad_y S  =  S(i, j) - S(i-1, j)   for each pixel (i,j)
-
-||grad_y S||_1  =  sum_i sum_j  |S(i,j) - S(i-1,j)|
+O = X + S
 ```
 
-**Meaning:**
-Vertical stripe noise is constant along columns — a stripe at column j has the same intensity for every row. Therefore, the vertical gradient `grad_y S` should be zero (or very small). Minimizing `||grad_y S||_1` forces S to be piecewise constant in the vertical direction, which is exactly the structure of stripe noise. This prevents S from capturing vertically varying image content like natural edges.
+The goal is to **estimate S** from O alone, and then recover the clean image as:
 
-**In MATLAB code (ADOM_vert.mlx):**
-```matlab
-grady_S = S - circshift(S, [1, 0]);   % [1,0] = shift down by 1 row = vertical gradient
 ```
-`circshift(S, [1,0])` shifts S down by 1 row with circular boundary. Subtracting gives the first-order finite difference approximation to `grad_y S`.
+X̂  =  O − S
+```
+
+This is an ill-posed inverse problem because infinitely many pairs (X, S) can produce the same observed O. The problem is made tractable by incorporating prior knowledge about the structural properties of both the clean image and the stripe noise through regularization.
 
 ---
 
-#### Term 2: `lambda1 * ||grad_x(O - S)||_{wn,1}` — Horizontal Sparsity of Clean Image Gradient
+### 3.2 Stripe Noise Priors
 
-**Math:**
+Two key structural properties of stripe noise are exploited as regularization priors:
+
+**Prior 1 — Gradient Sparsity Along the Stripe Direction (L1 norm):**
+Stripe noise is piecewise constant along the stripe direction. For vertical stripes, the stripe signal does not change in the vertical (y) direction — i.e., the vertical gradient of S is sparse (mostly zero). Mathematically:
+
 ```
-grad_x(O - S)  =  (O(i,j) - O(i,j-1)) - (S(i,j) - S(i,j-1))
-
-Weighted L1-norm:
-||X||_{wn,1}  =  sum_i sum_j  wn_{i,j} * |X_{i,j}|
-```
-
-**Meaning:**
-Stripe noise appears prominently in the horizontal gradient of the observed image O — it creates sharp horizontal transitions at stripe boundaries. The difference `(O - S)` should be the clean image D, whose horizontal gradient should be sparse (most pixel pairs are similar, only true edges cause large differences). The **weighted** version with `wn` adapts at each iteration — pixels where the current estimate looks more like stripe noise receive higher weights, making the algorithm focus on those locations.
-
-**In MATLAB code:**
-```matlab
-gradx_O = O - circshift(O, [0, 1]);   % [0,1] = shift right by 1 col = horizontal gradient
-gradx_S = S - circshift(S, [0, 1]);
+||∇_along S||_1  is small
 ```
 
----
+where `∇_along` denotes the finite difference operator along the stripe direction.
 
-#### Term 3: `lambda2 * ||S||_{wg,2,1}` — Group Sparsity of Stripe Noise Columns
+**Prior 2 — Group Sparsity Across the Stripe Direction (Weighted Group L2 norm):**
+Stripe noise is localized — only a fraction of columns (or rows or diagonals) carry noise. The stripe component S can be represented as a collection of groups `{S_g}`, where each group corresponds to one stripe-direction element (one column for vertical, one row for horizontal, one diagonal for diagonal stripes). Only a few groups have non-zero energy:
 
-**Math:**
 ```
-Standard L2,1-norm:
-||S||_{2,1}  =  sum_j  ||S_{[j]}||_2   =  sum_j  sqrt( sum_i S(i,j)^2 )
-
-Weighted version:
-||S||_{wg,2,1}  =  sum_j  wg_j * ||S_{[j]}||_2
+Σ_g  w_g  ||S_g||_2  is small
 ```
-where `S_{[j]}` is the j-th column of S (the j-th "group").
 
-**Meaning:**
-Stripe noise is column-sparse — only a fraction of columns (typically 20-60%) actually contain stripes, while most columns are zero. The L2,1-norm promotes this group sparsity by penalizing the L2-norm of each column as a group. Columns with no stripe are driven to exactly zero. The adaptive weight `wg_j` is lower for columns more likely to be stripe noise (making them easier to activate) and higher for clean columns (protecting them from accidental assignment).
+where `w_g` is an adaptive weight assigned to each group g, and `||S_g||_2` is the L2 norm of the stripe values in group g.
 
-**In MATLAB code:**
-```matlab
-% Subproblem C uses group-wise soft-thresholding:
-eta = S + tau3 / rho3;
-for j = 1:w
-    norm_eta = norm(eta(:,j), 2);           % L2-norm of column j
-    thresh   = wg(j) * lambda2 / rho3;     % Adaptive threshold for this column
-    if norm_eta > thresh
-        C(:,j) = eta(:,j) * (norm_eta - thresh) / norm_eta;  % Block soft-threshold
-    end
-    % If norm_eta <= thresh: C(:,j) = 0 (this column has no stripe)
-end
+**Prior 3 — Smoothness of the Residual Across the Stripe Direction (L1 norm):**
+The true image X is smooth across the stripe direction. This means the cross-direction gradient of O − S (which equals the cross-direction gradient of X) should be sparse:
+
+```
+||∇_perp (O − S)||_1  is small
 ```
 
 ---
 
-### Constrained Objective Function
+### 3.3 Optimization Problem Formulation
 
-To solve the objective function efficiently using ADMM, three **auxiliary variables** A, B, C are introduced and the problem is converted to a constrained form:
+Combining the three priors, the stripe noise S is estimated by solving the following **constrained convex optimization problem**:
 
 ```
-argmin_{A,B,C,S}  { ||A||_1  +  lambda1 * ||B||_{wn,1}  +  lambda2 * ||C||_{wg,2,1} }
+min_{S, A, B, C}   ||A||_1  +  λ₁ ||B||_1  +  λ₂ Σ_g w_g ||C_g||_2
 
 subject to:
-    A = grad_y S          (A captures the vertical gradient of S)
-    B = grad_x(O - S)     (B captures the horizontal gradient of the clean image)
-    C = S                 (C is an auxiliary copy of S for the group sparsity term)
+    ∇_along S  =  A          ... (constraint 1)
+    ∇_perp (O − S)  =  B     ... (constraint 2)
+    S  =  C                  ... (constraint 3)
 ```
 
-**Why do this?**
-The original objective mixes S and its gradients in complex, non-separable ways. By splitting them into separate variables with equality constraints, each variable can be updated independently with a closed-form solution, while the constraints enforce consistency. This is the core idea of ADMM.
+where:
+- `A` encodes the along-direction gradient of S (sparsity prior 1)
+- `B` encodes the cross-direction gradient of the residual (smoothness prior 3)
+- `C` encodes the group-sparse structure of S (group sparsity prior 2)
+- `λ₁`, `λ₂` are regularization hyperparameters balancing the three terms
+- `w_g` are adaptive per-group weights (updated each iteration)
+
+The auxiliary variables A, B, C decouple the problem into independent subproblems, each solvable in closed form.
 
 ---
 
-### Augmented Lagrangian Function
+### 3.4 Augmented Lagrangian and ADMM Framework
 
-The constraints are enforced by converting the constrained problem into an **augmented Lagrangian** (penalty + multiplier form):
+To solve the constrained problem, the **Augmented Lagrangian** is formed by introducing Lagrange multipliers `τ₁`, `τ₂`, `τ₃` and penalty parameters `ρ₁`, `ρ₂`, `ρ₃`:
 
 ```
-L_rho(A, B, C, S, tau1, tau2, tau3)  =
+L(S, A, B, C, τ₁, τ₂, τ₃) =
 
-    ||A||_1
-    + tau1^T * (grad_y S - A)    +  (rho1/2) * ||grad_y S - A||_2^2
+    ||A||_1  +  λ₁||B||_1  +  λ₂ Σ_g w_g ||C_g||_2
 
-    + lambda1 * ||B||_{wn,1}
-    + tau2^T * (grad_x O - grad_x S - B)  +  (rho2/2) * ||grad_x O - grad_x S - B||_2^2
+  + <τ₁, ∇_along S − A>  +  (ρ₁/2) ||∇_along S − A||²_F
 
-    + lambda2 * ||C||_{wg,2,1}
-    + tau3^T * (S - C)         +  (rho3/2) * ||S - C||_2^2
+  + <τ₂, ∇_perp(O−S) − B>  +  (ρ₂/2) ||∇_perp(O−S) − B||²_F
+
+  + <τ₃, S − C>  +  (ρ₃/2) ||S − C||²_F
 ```
 
-**Variables and their roles:**
-
-| Symbol | Name | Role |
-|--------|------|------|
-| `tau1, tau2, tau3` | Lagrange multipliers | Dual variables enforcing equality constraints. Updated each iteration to push A toward grad_yS, B toward grad_x(O-S), C toward S |
-| `rho1, rho2, rho3` | Penalty parameters | Control the strength of quadratic penalty for constraint violation. Larger rho = tighter enforcement |
-| `(rho/2)||...||^2` | Quadratic penalty | Penalizes deviation from constraints and stabilizes ADMM iterations |
+ADMM minimizes this Lagrangian by alternately updating each variable while keeping the others fixed, then updating the multipliers. One full ADMM iteration consists of **five steps**:
 
 ---
 
-## Optimization Process — 4 Steps Per Iteration
+### 3.5 ADMM Subproblem Solutions
 
-The algorithm iterates the following 4 steps until convergence or `max_iter` is reached:
+#### Step 1 — Subproblem A: L1 Soft Thresholding (Along-Direction Gradient)
 
-```
-Initialization:
-  S      = zeros(h, w)     <- Start with zero stripe estimate
-  S_prev = S
-  tau1 = tau2 = tau3 = 0   <- Lagrange multipliers start at zero
-  alpha  = 1               <- Momentum coefficient
-  wn     = 1               <- Norm weight (scalar)
-  wg     = ones(1, w)      <- Group norm weights (one per column)
-  k      = 0               <- Iteration counter
-
-Loop: while k < max_iter
-  Step 1: Weight Control           (update wn, wg using gamma and alpha)
-  Step 2: Starting Point Control   (update alpha and damping d)
-  Step 3: Step-Size Control        (update S and tau1/2/3 using momentum)
-  Step 4: ADMM Subproblem Solving  (solve A -> B -> C -> S, then update tau)
-  Convergence Check
-```
-
----
-
-### Step 1: Weight Control
-
-**Purpose:** Adapt `wn` and `wg` at every iteration so the weighted norms dynamically focus on detecting stripe-like patterns vs. true image content.
-
-#### 1a. Compute Residual Parameter gamma
+Minimizing L over A with S, B, C, τ fixed gives a classic L1 proximal problem:
 
 ```
-gamma^k  =  ||(O - S^k) - (O - S^(k-1))||_F
-             ----------------------------------
-                  ||(O - S^(k-1))||_F
+A* = argmin_A  ||A||_1  +  (ρ₁/2) ||∇_along S − A + τ₁/ρ₁||²_F
 ```
 
-This is the relative change in the clean image estimate between iterations.
+The closed-form solution is the **element-wise soft-thresholding operator**:
 
-**In MATLAB code:**
+```
+A  =  shrink( ∇_along S + τ₁/ρ₁,  1/ρ₁ )
+
+where  shrink(x, θ)  =  sign(x) · max(|x| − θ,  0)
+```
+
+In MATLAB (from `ADOM_vert.mlx`):
 ```matlab
-res_curr      = O - S;                           % Current clean estimate
-res_prev      = O - S_prev;                      % Previous clean estimate
-norm_res_prev = norm(res_prev, 'fro');           % Frobenius norm
+temp = grady_S + tau1 / rho1;
+A = sign(temp) .* max(abs(temp) - 1/rho1, 0);
+```
 
-if norm_res_prev == 0
-    gamma = 0;                                   % Avoid division by zero
-else
-    gamma = norm(res_curr - res_prev, 'fro') / norm_res_prev;
+#### Step 2 — Subproblem B: Weighted L1 Soft Thresholding (Cross-Direction Gradient)
+
+Minimizing L over B:
+
+```
+B* = argmin_B  λ₁||B||_1  +  (ρ₂/2) ||∇_perp(O−S) − B + τ₂/ρ₂||²_F
+```
+
+Solution:
+
+```
+B  =  shrink( ∇_perp(O−S) + τ₂/ρ₂,  wₙ·λ₁/ρ₂ )
+```
+
+where `wₙ` is the **momentum-adaptive norm weight** (updated each iteration, see Section 3.6). In MATLAB:
+```matlab
+temp = gradx_O - gradx_S + tau2 / rho2;
+B = sign(temp) .* max(abs(temp) - (wn * lambda1 / rho2), 0);
+```
+
+#### Step 3 — Subproblem C: Weighted Group Soft Thresholding (Group Sparsity)
+
+Minimizing L over C involves a **group-wise proximal operator** (block soft thresholding):
+
+```
+C_g* = argmin_{C_g}  w_g λ₂ ||C_g||_2  +  (ρ₃/2) ||η_g − C_g||²_F
+
+where  η_g  =  S_g + τ₃_g/ρ₃
+```
+
+The closed-form solution is the **group soft-thresholding operator**:
+
+```
+         ⎧  η_g · (||η_g||₂ − w_g λ₂/ρ₃) / ||η_g||₂    if  ||η_g||₂ > w_g λ₂/ρ₃
+C_g  =   ⎨
+         ⎩  0                                             otherwise
+```
+
+For vertical stripes, each group `g` is one column of S. In MATLAB:
+```matlab
+eta = S + tau3 / rho3;
+C = zeros(h, w);
+for j = 1:w
+    norm_eta = norm(eta(:,j), 2);
+    thresh = wg(j) * lambda2 / rho3;
+    if norm_eta > thresh
+        C(:,j) = eta(:,j) * (norm_eta - thresh) / norm_eta;
+    end
 end
 ```
 
-- `norm(X, 'fro')` computes the Frobenius norm: `sqrt(sum of all squared elements)`
-- `gamma` near 0 = solution is stable (near convergence)
-- `gamma` large = solution is still changing significantly
+#### Step 4 — Subproblem S: FFT-Based Closed-Form Linear Solver
+
+Minimizing L over S (with A, B, C, τ fixed) leads to a **linear system**:
+
+```
+[ ρ₁ ∇_along^T ∇_along  +  ρ₂ ∇_perp^T ∇_perp  +  ρ₃ I ] S  =  rhs
+```
+
+where:
+```
+rhs  =  ρ₁ ∇_along^T (A − τ₁/ρ₁)
+       + ρ₂ ∇_perp^T (∇_perp O − B + τ₂/ρ₂)
+       + ρ₃ (C − τ₃/ρ₃)
+```
+
+Because the gradient operators `∇_along` and `∇_perp` are **circular convolutions** (with periodic boundary conditions), this linear system is **diagonalized in the Fourier domain**. The solution is computed efficiently via the 2D Fast Fourier Transform (FFT):
+
+```
+Ŝ  =  iFFT( P̂  /  Q̂ )
+
+where:
+  P̂  =  ρ₁ F̄_along · FFT(rhs₁)  +  ρ₂ F̄_perp · FFT(rhs₂)  +  ρ₃ · FFT(rhs₃)
+
+  Q̂  =  ρ₁ |F_along|²  +  ρ₂ |F_perp|²  +  ρ₃
+
+  F_along  =  1 − exp(−j 2π (shift_y/H + shift_x/W))   [DFT of along-direction difference filter]
+  F_perp   =  1 − exp(−j 2π (shift_y/H − shift_x/W))   [DFT of perp-direction difference filter]
+```
+
+For vertical stripes (shift_along = [1,0], shift_perp = [0,1]):
+```matlab
+F_y = 1 - exp(-1i * 2 * pi * Fy / h);   % Vertical gradient DFT
+F_x = 1 - exp(-1i * 2 * pi * Fx / w);   % Horizontal gradient DFT
+Q = rho1*(conj(F_y).*F_y) + rho2*(conj(F_x).*F_x) + rho3;
+P = rho1*conj(F_y).*fft2(rhs1) + rho2*conj(F_x).*fft2(rhs2) + rho3*fft2(rhs3);
+S_new = real(ifft2(P ./ Q));
+```
+
+This FFT solver runs in **O(HW log(HW))** time, making it far more efficient than solving the full linear system directly.
+
+#### Step 5 — Lagrange Multiplier Updates
+
+After each ADMM subproblem cycle, the dual variables (Lagrange multipliers) are updated via gradient ascent on the dual function:
+
+```
+τ₁  ←  τ₁  +  ρ₁ (∇_along S_new − A)
+τ₂  ←  τ₂  +  ρ₂ (∇_perp(O − S_new) − B)
+τ₃  ←  τ₃  +  ρ₃ (S_new − C)
+```
 
 ---
 
-#### 1b. Update Norm Weight wn
+### 3.6 Weight-Based Detection Strategy
+
+A critical innovation in ADOM is the **adaptive weighting** of the norm weight `wₙ` and the group weights `{w_g}`, which allow the model to distinguish stripe noise from genuine image edges.
+
+#### Norm Weight wₙ (Controls Subproblem B Threshold)
+
+At each iteration k, the **residual ratio** γ is computed as:
 
 ```
-wn^(k+1)  =  (alpha^(k-1) + gamma^k)
-              --------------------------
-              (alpha^k - gamma^k)
+γ_k  =  ||res_k − res_{k-1}||_F  /  ||res_{k-1}||_F
+
+where  res_k  =  O − S_k
 ```
 
-`wn` is a scalar that modulates the threshold in Subproblem B. When gamma is large (rapid changes), wn increases, making the weighted L1 threshold more aggressive.
+This measures how much the residual image changed between iterations. The norm weight is then:
 
-**In MATLAB code:**
+```
+wₙ  =  (α_{k-1} + γ_k) / (α_k − γ_k)
+```
+
+A large γ (fast-changing residual) indicates the model is aggressively removing content — possibly genuine image detail — so wₙ is adjusted to be more conservative.
+
+#### Group Weight wg (Controls Group Thresholding in Subproblem C)
+
+For each stripe group g, the adaptive weight `w_g` is updated based on the current stripe estimate:
+
+```
+v  =  (1/G) Σ_g ||S_g||_2      [average group norm]
+
+For each group g:
+  if ||S_g − S_{g-1}||₂ < v  AND  ||S_g − S_{g+1}||₂ < v:
+      w_g  =  1 / (2 · ||S_g + γ||₂)
+```
+
+Groups that differ greatly from their neighbors (likely genuine image edges) are excluded from the weight update, preserving their weights. Groups that are locally smooth (likely uniform stripes) get their weights updated, making their thresholds more sensitive. In MATLAB:
+
 ```matlab
-if alpha - gamma ~= 0
-    wn = (alpha_prev + gamma) / (alpha - gamma);
-else
-    wn = 1;     % Safe fallback to avoid division by zero
-end
-```
-
----
-
-#### 1c. Update Group Norm Weights wg
-
-For each column j of S:
-
-```
-Step 1: Compute mean group norm:
-    v^k  =  (1/n) * sum_j ||S^k_{[j]}||_2
-
-Step 2: Check adjacency condition — update wg_j only if:
-    ||S_{[j]} - S_{[j-1]}||_2 < v   AND   ||S_{[j]} - S_{[j+1]}||_2 < v
-    (column j is similar to its neighbors = likely a smooth stripe, not an edge)
-
-Step 3: If condition met:
-    wg_j^(k+1)  =  1 / (2 * ||S^k_{[j]} + gamma^k||_2)
-```
-
-`wg_j` is **inversely proportional** to the current column norm. Strong stripe candidates (large column norm) get a small weight, making them easier to threshold. Clean columns (small norm) get large weights, protecting them.
-
-**In MATLAB code:**
-```matlab
-column_norms = sqrt(sum(S.^2, 1));   % L2-norm of each column: 1 x w vector
-v = sum(column_norms) / w;           % Mean column norm
-
+column_norms = sqrt(sum(S.^2, 1));
+v = sum(column_norms) / w;
 for j = 1:w
     update_flag = true;
-    % Check left neighbor
-    if j > 1 && norm(S(:,j) - S(:,j-1), 2) >= v
-        update_flag = false;         % Too different from neighbor: likely an edge
-    end
-    % Check right neighbor
-    if j < w && norm(S(:,j) - S(:,j+1), 2) >= v
-        update_flag = false;
-    end
+    if j > 1 && norm(S(:,j) - S(:,j-1), 2) >= v, update_flag = false; end
+    if j < w && norm(S(:,j) - S(:,j+1), 2) >= v, update_flag = false; end
     if update_flag
-        norm_shift = norm(S(:,j) + gamma, 2);   % ||S_j + gamma||_2
+        norm_shift = norm(S(:,j) + gamma, 2);
         if norm_shift > 0
-            wg(j) = 1 / (2 * norm_shift);       % Inverse weighting
+            wg(j) = 1 / (2 * norm_shift);
         end
     end
 end
@@ -332,800 +363,246 @@ end
 
 ---
 
-### Step 2: Evidence-Based Starting Point Control
+### 3.7 ADMM-Based Acceleration Strategy
 
-**Purpose:** Update the momentum coefficient alpha and damping coefficient d to control how aggressively the algorithm accelerates. The threshold parameter `p` acts as a switch between two regimes.
+Two control strategies are used to accelerate convergence beyond standard ADMM.
 
-#### 2a. Update Momentum Coefficient alpha (Nesterov's Method)
+#### Strategy 1: Evidence-Based Starting Point Control
 
-```
-alpha^(k+1)  =  (1 + sqrt(4*(alpha^k)^2 + 1)) / 2,   if k <= p   <- aggressive phase
-                (1 + sqrt(2*(alpha^k)^2 + 1)) / 2,   if k >  p   <- conservative phase
-```
-
-- When `k <= p`: uses `4*(alpha^k)^2` — more aggressive acceleration
-- When `k > p`: uses `2*(alpha^k)^2` — gentler acceleration to avoid overshooting near convergence
-- This is a variant of **Nesterov's accelerated gradient method** adapted for ADMM
-
-**In MATLAB code:**
-```matlab
-alpha_prev = alpha;
-if k <= p
-    alpha = (1 + sqrt(1 + 4 * alpha_prev^2)) / 2;   % Aggressive Nesterov step
-else
-    alpha = (1 + sqrt(1 + 2 * alpha_prev^2)) / 2;   % Conservative Nesterov step
-end
-```
-
-#### 2b. Update Damping Coefficient d
+The momentum parameter `α` is updated using a Nesterov-inspired schedule that provides a better starting point for each ADMM subproblem:
 
 ```
-d^(k+1)  =  wn^(k+1),          if k <= p   <- Use norm weight for early damping
-             alpha^k / alpha^(k+1),  if k >  p   <- Use ratio of momentum coefficients
+For k ≤ p  (early phase):
+    α_k  =  (1 + √(1 + 4 α_{k-1}²)) / 2      [faster, FISTA-type schedule]
+
+For k > p  (late phase):
+    α_k  =  (1 + √(1 + 2 α_{k-1}²)) / 2      [slower, stability-focused schedule]
 ```
 
-`d` scales the Lagrange multipliers in Step 3, preventing excessive acceleration from destabilizing the optimization.
-
-**In MATLAB code:**
-```matlab
-if k <= p
-    d = wn;                      % Early phase: tie damping to norm weight
-else
-    d = alpha_prev / alpha;      % Late phase: standard Nesterov damping ratio
-end
-```
-
----
-
-### Step 3: Momentum-Based Step-Size Control
-
-**Purpose:** Apply a momentum-based extrapolation to S and scale Lagrange multipliers to accelerate convergence.
-
-#### 3a. Momentum Update of S
+The threshold `p` (default 10) separates aggressive early-phase acceleration from stable late-phase convergence. The Lagrange multipliers are also scaled by a factor `d`:
 
 ```
-S^k  <-  S^k  +  ((alpha^(k+1) - delta) / alpha^k)  *  (S^k - S^(k-1))
+For k ≤ p:  d = wₙ
+For k > p:  d = α_{k-1} / α_k
 ```
 
-This is the **momentum extrapolation step**: instead of using just the current S, we overshoot in the direction of recent progress. `delta = 0.1` is a small damping constant that slightly reduces the step to prevent instability.
-
-**In MATLAB code:**
-```matlab
-delta = 0.1;    % Damping constant from the paper
-if alpha_prev ~= 0
-    S = S + ((alpha - delta) / alpha_prev) * (S - S_prev);
-end
-```
-
-#### 3b. Scale Lagrange Multipliers
-
-```
-tau1^k <- d^(k+1) * tau1^k
-tau2^k <- d^(k+1) * tau2^k
-tau3^k <- d^(k+1) * tau3^k
-```
-
-Scaling the multipliers by d prevents them from growing too large. This gives ADOM its stability advantage over plain accelerated ADMM.
-
-**In MATLAB code:**
+This is applied as:
 ```matlab
 tau1 = d * tau1;
 tau2 = d * tau2;
 tau3 = d * tau3;
 ```
 
----
+#### Strategy 2: Momentum-Based Step-Size Control
 
-### Step 4: ADMM-Based Subproblem Solving
+The stripe estimate S is extrapolated using momentum before each ADMM cycle, providing a warm start:
 
-This step solves four subproblems in sequence: A, B, C, then S. Each has a closed-form solution derived from the augmented Lagrangian.
-
----
-
-#### Subproblem A — Pixel-wise Soft-Thresholding
-
-**Minimize:** `||A||_1 + (rho1/2) * ||grad_y S - A + tau1/rho1||_2^2`
-
-**Closed-form solution (soft-thresholding):**
 ```
-A^(k+1)  =  sign(grad_y S^k + tau1^k/rho1)
-             * max(|grad_y S^k + tau1^k/rho1| - 1/rho1, 0)
+S  ←  S  +  ((α_k − δ) / α_{k-1}) · (S_k − S_{k-1})
 ```
 
-This is the **proximal operator of the L1-norm** (soft-thresholding). For each pixel independently:
-- If `|x| > threshold`: shrink toward zero by the threshold amount
-- If `|x| <= threshold`: set to exactly zero (promotes sparsity)
+where `δ = 0.1` is a damping coefficient that prevents overshooting and maintains stability. In MATLAB:
 
-**In MATLAB code:**
 ```matlab
-grady_S = S - circshift(S, [1, 0]);         % Vertical gradient of current S
-temp = grady_S + tau1 / rho1;               % Shifted gradient
-A = sign(temp) .* max(abs(temp) - 1/rho1, 0);  % Soft-threshold
-```
-
-`sign(temp)` gives the element-wise sign (+/-1), `max(abs(temp) - threshold, 0)` performs shrinkage, and `.*` is element-wise multiplication.
-
----
-
-#### Subproblem B — Weighted Pixel-wise Soft-Thresholding
-
-**Minimize:** `lambda1 * ||B||_{wn,1} + (rho2/2) * ||grad_x O - grad_x S - B + tau2/rho2||_2^2`
-
-**Closed-form solution:**
-```
-B^(k+1)  =  sign(grad_x O - grad_x S^k + tau2^k/rho2)
-             * max(|grad_x O - grad_x S^k + tau2^k/rho2| - wn^(k+1)*lambda1/rho2, 0)
-```
-
-Same structure as Subproblem A, but:
-- The input signal is the horizontal gradient of the residual `grad_x O - grad_x S`
-- The threshold is now `wn*lambda1/rho2` — adaptively scaled by the norm weight `wn`
-
-**In MATLAB code:**
-```matlab
-gradx_O = O - circshift(O, [0, 1]);         % Horizontal gradient of O
-gradx_S = S - circshift(S, [0, 1]);         % Horizontal gradient of current S
-temp = gradx_O - gradx_S + tau2 / rho2;    % Shifted horizontal gradient of residual
-B = sign(temp) .* max(abs(temp) - (wn * lambda1 / rho2), 0);   % Weighted soft-threshold
+S = S + ((alpha - delta) / alpha_prev) * (S - S_prev);
 ```
 
 ---
 
-#### Subproblem C — Group-wise Block Soft-Thresholding
+### 3.8 Convergence Criterion
 
-**Minimize:** `lambda2 * ||C||_{wg,2,1} + (rho3/2) * ||S - C + tau3/rho3||_2^2`
+The algorithm terminates when the relative change in the residual falls below a tolerance threshold `tol`:
 
-**Closed-form solution (block soft-thresholding, per column j):**
 ```
-eta_j  =  S^k_{[j]} + tau3^k_{[j]} / rho3        <- Shifted S for column j
-
-C^(k+1)_{[j]}  =  max(||eta_j||_2 - wg_j*lambda2/rho3, 0)
-                   -----------------------------------------  * eta_j
-                              ||eta_j||_2
+||res_k − res_{k-1}||_F  /  ||res_{k-1}||_F   ≤   tol
 ```
 
-This is the **proximal operator of the weighted L2,1-norm** (group soft-thresholding). For each column j:
-- If the column's L2-norm exceeds the threshold: shrink the entire column proportionally toward zero
-- If the norm is below the threshold: set the entire column to zero (no stripe in this column)
-
-The direction of eta_j is preserved; only its magnitude is shrunk.
-
-**In MATLAB code:**
-```matlab
-eta = S + tau3 / rho3;      % eta = S + tau3/rho3 (shifted S)
-C   = zeros(h, w);          % Most columns will stay zero
-
-for j = 1:w
-    norm_eta = norm(eta(:,j), 2);              % L2-norm of column j of eta
-    thresh   = wg(j) * lambda2 / rho3;        % Adaptive threshold for column j
-    if norm_eta > thresh
-        C(:,j) = eta(:,j) * (norm_eta - thresh) / norm_eta;   % Block soft-threshold
-    end
-end
-```
+Default values: `tol = 1e-4`, `max_iter = 200`.
 
 ---
 
-#### Subproblem S — FFT-Based Least Squares Solver
+### 3.9 Direction-Specific Configurations
 
-**Minimize (jointly over S):**
-```
-(rho1/2) * ||grad_y S - A + tau1/rho1||_2^2
-+ (rho2/2) * ||grad_x O - grad_x S - B + tau2/rho2||_2^2
-+ (rho3/2) * ||S - C + tau3/rho3||_2^2
-```
+The ADOM framework is generalized to three stripe directions by changing the gradient operators and group definitions:
 
-This is a **quadratic least squares problem** in S. The gradient set to zero gives:
+| Direction | Along Shift | Perp Shift | Groups | F_along | F_perp |
+|-----------|------------|------------|--------|---------|--------|
+| Vertical | [1, 0] (↓) | [0, 1] (→) | Columns (j = 1..W) | 1 − e^{−j2πfy/H} | 1 − e^{−j2πfx/W} |
+| Horizontal | [0, 1] (→) | [1, 0] (↓) | Rows (i = 1..H) | 1 − e^{−j2πfx/W} | 1 − e^{−j2πfy/H} |
+| Diagonal | [1, 1] (↘) | [1, −1] (↗) | Main diagonals (k = −(W−1)..H−1) | 1 − e^{−j2π(fy/H + fx/W)} | 1 − e^{−j2π(fy/H − fx/W)} |
 
-```
-(rho1 * grad_y^T grad_y  +  rho2 * grad_x^T grad_x  +  rho3 * I) * S  =  RHS
+For diagonal stripes, group g corresponds to the k-th main diagonal of the image matrix. The pixels on diagonal k are indexed as:
 
-RHS  =  rho1 * grad_y^T (A^(k+1) - tau1^k/rho1)
-       + rho2 * grad_x^T (grad_x O - B^(k+1) + tau2^k/rho2)
-       + rho3 * (C^(k+1) - tau3^k/rho3)
-```
-
-Under **periodic boundary conditions**, finite-difference operators are circulant matrices, and the system can be solved efficiently using the **2D Fast Fourier Transform (FFT)**:
-
-```
-S^(k+1)  =  IFFT2( P / Q )
-
-P  =  rho1 * FFT2(grad_y)* (element-wise) FFT2(A^(k+1) - tau1/rho1)
-     + rho2 * FFT2(grad_x)* (element-wise) FFT2(grad_x O - B^(k+1) + tau2/rho2)
-     + rho3 * FFT2(C^(k+1) - tau3/rho3)
-
-Q  =  rho1 * FFT2(grad_y)* (element-wise) FFT2(grad_y)
-     + rho2 * FFT2(grad_x)* (element-wise) FFT2(grad_x)
-     + rho3
-```
-
-Where `*` denotes complex conjugate and all multiplications are element-wise.
-
-**Key efficiency note:** `Q` only depends on fixed penalty parameters and image dimensions — it is **precomputed once before the loop** and reused every iteration.
-
-**In MATLAB code:**
 ```matlab
-%% Precomputed ONCE before the main loop:
-[Fx, Fy] = meshgrid(0:w-1, 0:h-1);         % Frequency coordinate grids
-F_x = 1 - exp(-1i * 2 * pi * Fx / w);      % DFT of horizontal difference operator
-F_y = 1 - exp(-1i * 2 * pi * Fy / h);      % DFT of vertical difference operator
-F_x_conj = conj(F_x);
-F_y_conj = conj(F_y);
-
-Q = rho1*(F_y_conj .* F_y) + rho2*(F_x_conj .* F_x) + rho3;
-Q(Q == 0) = eps;     % Avoid division by zero at DC frequency
-
-%% Inside the main loop — compute P and solve:
-rhs1 = A - tau1 / rho1;                         % A^(k+1) - tau1/rho1
-rhs2 = gradx_O - B + tau2 / rho2;              % grad_x O - B^(k+1) + tau2/rho2
-rhs3 = C - tau3 / rho3;                         % C^(k+1) - tau3/rho3
-
-P = rho1 * F_y_conj .* fft2(rhs1) ...
-  + rho2 * F_x_conj .* fft2(rhs2) ...
-  + rho3 * fft2(rhs3);
-
-S_new = real(ifft2(P ./ Q));    % Take real part to eliminate floating-point imaginary residuals
-```
-
----
-
-#### Update Lagrange Multipliers
-
-After all subproblems are solved, the Lagrange multipliers are updated using the **dual ascent step**:
-
-```
-tau1^(k+1)  =  tau1^k  +  rho1 * (grad_y S^(k+1) - A^(k+1))
-tau2^(k+1)  =  tau2^k  +  rho2 * (grad_x O - grad_x S^(k+1) - B^(k+1))
-tau3^(k+1)  =  tau3^k  +  rho3 * (S^(k+1) - C^(k+1))
-```
-
-Each update accumulates the **constraint violation** scaled by rho. If the constraint is exactly satisfied, the multiplier does not change. As long as there is residual violation, tau pushes the solution toward satisfying the constraint.
-
-**In MATLAB code:**
-```matlab
-grady_Snew = S_new - circshift(S_new, [1, 0]);
-gradx_Snew = S_new - circshift(S_new, [0, 1]);
-
-tau1 = tau1 + rho1 * (grady_Snew - A);
-tau2 = tau2 + rho2 * (gradx_O - gradx_Snew - B);
-tau3 = tau3 + rho3 * (S_new - C);
-
-S_prev = S;      % Save for next iteration's momentum computation
-S = S_new;       % Accept the new stripe estimate
-```
-
----
-
-### Convergence Check
-
-The iteration terminates when the relative change in the clean image estimate falls below tolerance:
-
-```
-||(O - S^(k+1)) - (O - S^k)||_F
----------------------------------  <=  tol
-      ||(O - S^k)||_F
-```
-
-**In MATLAB code:**
-```matlab
-res_curr      = O - S;
-res_prev      = O - S_prev;
-norm_res_prev = norm(res_prev, 'fro');
-
-if norm_res_prev > 0 && norm(res_curr - res_prev, 'fro') / norm_res_prev <= tol
-    break;    % Converged: exit the loop early
-end
-```
-
-After convergence (or reaching `max_iter`):
-```matlab
-destriped = O - S;    % Recover clean image by subtracting the estimated stripe noise
-```
-
----
-
-## Code File Explanations
-
----
-
-### 1. `ADOM_vert.mlx` — Vertical Stripe Removal
-
-**What it does:** Removes vertical stripe noise (stripes running top-to-bottom) from a grayscale image.
-
-**Core function signature:**
-```matlab
-function destriped = ADOM(O, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter)
-```
-
-**Key design choices for vertical stripes:**
-- Along-stripe direction = vertical (`grad_y`): stripes are constant down columns
-- Perpendicular direction = horizontal (`grad_x`): stripes are sharp across rows
-- Groups = columns (each column is one potential stripe)
-- `wg` is a `1 x w` vector, one weight per column
-
-**Initialization block:**
-```matlab
-[h, w] = size(O);
-delta  = 0.1;               % Damping constant delta from the paper
-
-S      = zeros(h, w);       % Start with no stripe estimate
-S_prev = S;                 % Previous S for momentum tracking
-tau1   = zeros(h, w);       % Lagrange multipliers, all zero at start
-tau2   = zeros(h, w);
-tau3   = zeros(h, w);
-alpha  = 1;                 % Momentum coefficient starts at 1
-wn     = 1;                 % Norm weight starts at neutral (1 = no weighting)
-wg     = ones(1, w);        % Group norm weights, all 1 = equal weighting per column
-k      = 0;                 % Iteration counter
-```
-
-**Synthetic vertical stripe generation (demo section):**
-```matlab
-stripe_ratio    = 0.4;      % 40% of columns get stripes
-noise_intensity = 0.5;      % Stripe amplitude: values in range [-0.5, 0.5]
-num_stripes     = round(stripe_ratio * size(O,2));
-stripe_cols     = randperm(size(O,2), num_stripes);  % Randomly pick columns
-
-for col = stripe_cols
-    stripes(:, col) = randn() * noise_intensity;  % Same Gaussian value for ALL rows of this column
-end
-```
-
-`randn()` produces a single Gaussian-distributed random number. Using the same value for all rows of a column creates a perfect vertical stripe.
-
----
-
-### 2. `ADOM_hori.mlx` — Horizontal Stripe Removal
-
-**What it does:** Removes horizontal stripe noise (stripes running left-to-right) from a grayscale image.
-
-**Core function:**
-```matlab
-function destriped = ADOM_Horizontal(O, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter)
-```
-
-**Key differences from vertical version:**
-
-| Aspect | Vertical (ADOM_vert) | Horizontal (ADOM_hori) |
-|--------|----------------------|------------------------|
-| Along-stripe gradient | `grad_y` (vertical) | `grad_x` (horizontal) |
-| Perpendicular gradient | `grad_x` (horizontal) | `grad_y` (vertical) |
-| Groups | Columns (each h x 1) | Rows (each 1 x w) |
-| wg size | `1 x w` | `1 x h` |
-| Subproblem A | Uses `grad_y S` | Uses `grad_x S` |
-| Subproblem B | Uses `grad_x(O-S)` | Uses `grad_y(O-S)` |
-
-**The FFT denominator Q is swapped to match the new gradient directions:**
-```matlab
-% Vertical version:
-Q = rho1*(F_y_conj .* F_y) + rho2*(F_x_conj .* F_x) + rho3;
-
-% Horizontal version (rho1 and rho2 operators swapped):
-Q = rho1*(F_x_conj .* F_x) + rho2*(F_y_conj .* F_y) + rho3;
-```
-
-**Group norm weight update operates on rows instead of columns:**
-```matlab
-row_norms = sqrt(sum(S.^2, 2));   % sum along dim 2 (columns) -> L2-norm of each row: h x 1
-v = sum(row_norms) / h;           % Mean row norm
-
-for i = 1:h
-    update_flag = true;
-    if i > 1 && norm(S(i,:) - S(i-1,:), 2) >= v, update_flag = false; end  % Check row above
-    if i < h && norm(S(i,:) - S(i+1,:), 2) >= v, update_flag = false; end  % Check row below
-    if update_flag
-        norm_shift = norm(S(i,:) + gamma, 2);
-        if norm_shift > 0
-            wg(i) = 1 / (2 * norm_shift);
-        end
-    end
-end
-```
-
-**Subproblem A uses horizontal gradient (along-stripe direction for horizontal stripes):**
-```matlab
-gradx_S = S - circshift(S, [0, 1]);     % [0,1] = horizontal shift
-temp = gradx_S + tau1 / rho1;
-A = sign(temp) .* max(abs(temp) - 1/rho1, 0);
-```
-
-**Subproblem B uses vertical gradient (perpendicular direction for horizontal stripes):**
-```matlab
-grady_O = O - circshift(O, [1, 0]);     % Vertical gradient of O
-grady_S = S - circshift(S, [1, 0]);
-temp = grady_O - grady_S + tau2 / rho2;
-B = sign(temp) .* max(abs(temp) - (wn * lambda1 / rho2), 0);
-```
-
-**Subproblem C operates on rows instead of columns:**
-```matlab
-for i = 1:h
-    norm_eta = norm(eta(i,:), 2);             % L2-norm of row i
-    thresh   = wg(i) * lambda2 / rho3;
-    if norm_eta > thresh
-        C(i,:) = eta(i,:) * (norm_eta - thresh) / norm_eta;
-    end
-end
-```
-
----
-
-### 3. `ADOM_diag.mlx` — Diagonal Stripe Removal
-
-**What it does:** Removes diagonal stripe noise that runs along the main diagonal direction (top-left to bottom-right).
-
-**Core function:**
-```matlab
-function destriped = ADOM(O, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter)
-```
-
-**Key challenge:** Diagonal stripes do not align with rows or columns, so groups are **diagonal index sets** that must be precomputed.
-
-**Diagonal index precomputation:**
-```matlab
-ks = -(w-1):(h-1);          % Diagonal offsets: -(w-1) to (h-1), covers all diagonals
-num_diags = length(ks);      % Total diagonals = h + w - 1
-
-idxs = cell(1, num_diags);   % Cell array storing linear indices for each diagonal
+ks = -(w-1):(h-1);
 for g = 1:num_diags
     k = ks(g);
-    rows = max(1, k+1):min(h, k+w);    % Row range where diagonal g exists
-    cols = rows - k;                   % Corresponding columns: col = row - k
-    idxs{g} = sub2ind([h, w], rows, cols);  % Convert (row,col) to linear indices
-end
-```
-
-`sub2ind([h,w], rows, cols)` converts 2D subscripts to linear (column-major) indices so diagonal elements can be addressed as a single vector.
-
-**Diagonal gradient operators:**
-```matlab
-% Along diagonal: shift by [1,1] = down 1 row AND right 1 col
-grad_diag_S = S - circshift(S, [1, 1]);
-
-% Perpendicular (anti-diagonal): shift by [1,-1] = down 1 row AND left 1 col
-grad_perp_S = S - circshift(S, [1, -1]);
-grad_perp_O = O - circshift(O, [1, -1]);
-```
-
-**Diagonal Fourier multipliers:**
-```matlab
-% DFT of diagonal operator [1,1]:
-F_diag = 1 - exp(-1i * 2 * pi * (Fx/w + Fy/h));
-
-% DFT of anti-diagonal operator [1,-1]:
-F_perp = 1 - exp(-1i * 2 * pi * (Fy/h - Fx/w));
-
-Q = rho1*(conj(F_diag).*F_diag) + rho2*(conj(F_perp).*F_perp) + rho3;
-Q(Q==0) = eps;
-```
-
-**Subproblem C for diagonals (reads and writes diagonal groups using precomputed indices):**
-```matlab
-eta = S + tau3 / rho3;
-C   = zeros(h, w);
-for g = 1:num_diags
-    eta_group = eta(idxs{g});             % Extract diagonal g as a vector
-    norm_eta  = norm(eta_group, 2);
-    thresh    = wg(g) * lambda2 / rho3;
-    if norm_eta > thresh
-        c_group    = eta_group * (norm_eta - thresh) / norm_eta;
-        C(idxs{g}) = c_group;             % Write back to diagonal positions
-    end
+    rows = max(1, k+1) : min(h, k+w);
+    cols = rows - k;
+    idxs{g} = sub2ind([h, w], rows, cols);
 end
 ```
 
 ---
 
-### 4. `ADOM_2D.mlx` — Bidirectional Stripe Removal
+### 3.10 Multi-Directional Destriping Pipeline
 
-**What it does:** Removes both vertical AND horizontal stripe noise by running two sequential passes. Both `ADOM_Vertical` and `ADOM_Horizontal` functions are defined in the same file.
-
-**Two-pass pipeline:**
-```matlab
-% Pass 1: Remove vertical stripes using parameters A1, B1
-destriped_vert = ADOM_Vertical(O_striped, A1, B1, rho1, rho2, rho3, p, tol, max_iter);
-
-% Pass 2: Remove horizontal stripes from the already-destriped image, using A2, B2
-destriped = ADOM_Horizontal(destriped_vert, A2, B2, rho1, rho2, rho3, p, tol, max_iter);
-```
-
-Separate `lambda1`/`lambda2` values (`A1/B1` vs `A2/B2`) allow independent tuning for each pass.
-
-**Bidirectional synthetic noise generation:**
-```matlab
-% 40% vertical stripes with uniform amplitude in [-0.5, 0.5]
-for col = randperm(size(O,2), round(0.4 * size(O,2)))
-    stripes_vert(:, col) = (rand()*2 - 1) * noise_intensity_vert;
-end
-
-% 40% horizontal stripes with uniform amplitude in [-0.5, 0.5]
-for row = randperm(size(O,1), round(0.4 * size(O,1)))
-    stripes_horz(row, :) = (rand()*2 - 1) * noise_intensity_horz;
-end
-
-O_striped = max(0, min(1, O + stripes_vert + stripes_horz));  % Clip to [0,1]
-```
-
----
-
-### 5. `ADOM_stripe.mlx` — Synthetic Stripe Noise Generator
-
-**What it does:** A standalone utility that adds synthetic vertical stripe noise to a clean image and saves the result. Used to create test inputs for the destriping scripts.
-
-**Full pipeline:**
-```matlab
-%% Step 1: Load and convert image
-img = imread(img_path);
-if size(img,3) > 1
-    img = rgb2gray(img);      % Convert RGB to grayscale
-end
-O = im2double(img);           % Convert uint8 [0,255] to double [0.0, 1.0]
-
-%% Step 2: Generate stripe pattern
-stripe_ratio    = 0.4;        % 40% of columns get stripes
-noise_intensity = 0.5;        % Amplitude: stripes have values near [-0.5, +0.5]
-num_stripes     = round(stripe_ratio * size(O,2));
-stripe_cols     = randperm(size(O,2), num_stripes);
-
-stripes = zeros(size(O));
-for col = stripe_cols
-    stripes(:, col) = randn() * noise_intensity;  % Same Gaussian value for all rows
-end
-
-%% Step 3: Add stripes and clip to valid pixel range
-O_striped = O + stripes;
-O_striped = max(0, min(1, O_striped));   % Clamp to [0,1]
-
-%% Step 4: Save striped image
-imwrite(O_striped, output_path);
-```
-
----
-
-### 6. `ADOM_striperemoval.mlx` — Load and Remove Stripe Noise
-
-**What it does:** Loads a pre-saved striped image (output of `ADOM_stripe.mlx` or a real noisy RSI), runs ADOM to remove vertical stripes, and saves the clean result.
-
-**Full pipeline:**
-```matlab
-%% Load the striped image
-img = imread(striped_img_path);
-if size(img,3) > 1, img = rgb2gray(img); end
-O_striped = im2double(img);
-
-%% Set parameters
-lambda1 = 0.05;   rho1 = 1;   p = 10;
-lambda2 = 0.1;    rho2 = 1;   tol = 1e-4;
-                  rho3 = 1;   max_iter = 200;
-
-%% Run ADOM
-destriped = ADOM(O_striped, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter);
-
-%% Save result
-imwrite(destriped, output_path);
-```
-
-This is the recommended entry point for **processing real remote sensing images** with existing stripe noise — no synthetic noise generation needed.
-
----
-
-### 7. `All-destripe.mlx` — Unified Multi-Direction Removal
-
-**What it does:** Provides a single unified `ADOM` function that handles all three directions via a `direction` parameter, plus a demo that adds and removes all three stripe types simultaneously.
-
-**Unified function signature:**
-```matlab
-function destriped = ADOM(O, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter, direction)
-% direction: 'vertical' | 'horizontal' | 'diagonal'
-```
-
-**Direction-aware configuration using a switch-case and MATLAB function handles:**
-```matlab
-switch lower(direction)
-    case 'vertical'
-        shift_along = [1, 0];     % Along-stripe gradient direction
-        shift_perp  = [0, 1];     % Perpendicular gradient direction
-        num_groups  = w;
-        get_group = @(S, g) S(:, g);                           % Extract column g
-        set_group = @(C, v, g) assign_column(C, v, g);        % Set column g
-
-    case 'horizontal'
-        shift_along = [0, 1];
-        shift_perp  = [1, 0];
-        num_groups  = h;
-        get_group = @(S, g) S(g, :);                           % Extract row g
-        set_group = @(C, v, g) assign_row(C, v, g);
-
-    case 'diagonal'
-        shift_along = [1,  1];    % Main diagonal
-        shift_perp  = [1, -1];    % Anti-diagonal
-        num_groups  = length(ks);
-        get_group = @(S, g) S(idxs{g});                       % Extract diagonal g
-        set_group = @(C, v, g) assign_diagonal(C, v, idxs{g});
-end
-```
-
-The use of **function handles** (`@(S,g) S(:,g)`) makes the main ADMM loop completely generic — the same code for Subproblems A, B, C, and S works identically for all three directions without any direction-specific branching inside the loop.
-
-**Generic Fourier multipliers computed directly from shift vectors:**
-```matlab
-exp_along    = exp(-1i * 2*pi * (shift_along(1)*Fy/h + shift_along(2)*Fx/w));
-F_along      = 1 - exp_along;
-F_along_conj = conj(F_along);
-
-exp_perp     = exp(-1i * 2*pi * (shift_perp(1)*Fy/h + shift_perp(2)*Fx/w));
-F_perp       = 1 - exp_perp;
-F_perp_conj  = conj(F_perp);
-
-Q = rho1*(F_along_conj .* F_along) + rho2*(F_perp_conj .* F_perp) + rho3;
-Q(Q==0) = eps;
-```
-
-**Three-pass sequential destriping:**
-```matlab
-destriped_v = ADOM(O_striped,   ..., 'vertical');    % Pass 1: remove vertical
-destriped_h = ADOM(destriped_v, ..., 'horizontal');  % Pass 2: remove horizontal
-destriped   = ADOM(destriped_h, ..., 'diagonal');    % Pass 3: remove diagonal
-```
-
-**Three-direction synthetic noise generation:**
-```matlab
-noise_intensity = 0.3;   % Reduced intensity so all three types remain visible
-
-% Vertical stripes
-for col = randperm(w, round(stripe_ratio*w))
-    stripes_v(:, col) = (rand()*2 - 1) * noise_intensity;
-end
-
-% Horizontal stripes
-for row = randperm(h, round(stripe_ratio*h))
-    stripes_h(row, :) = (rand()*2 - 1) * noise_intensity;
-end
-
-% Diagonal stripes (using precomputed diagonal index sets)
-for g = randperm(num_diags, round(stripe_ratio*num_diags))
-    stripes_d(idxs{g}) = (rand()*2 - 1) * noise_intensity;
-end
-
-O_striped = max(0, min(1, O + stripes_v + stripes_h + stripes_d));
-```
-
----
-
-## Repository Structure
+For images corrupted by stripes in multiple directions simultaneously, the ADOM functions are applied **sequentially**:
 
 ```
-├── ADOM_vert.mlx          # Vertical stripe removal (standalone ADOM function + demo)
-├── ADOM_hori.mlx          # Horizontal stripe removal (ADOM_Horizontal function + demo)
-├── ADOM_diag.mlx          # Diagonal stripe removal (diagonal ADOM function + demo)
-├── ADOM_2D.mlx            # Bidirectional removal (two-pass: vertical then horizontal)
-├── ADOM_stripe.mlx        # Utility: add synthetic vertical stripes to an image + save
-├── ADOM_striperemoval.mlx # Utility: load a pre-striped image, run ADOM, save result
-├── All-destripe.mlx       # Unified ADOM with direction param + three-pass all-direction demo
-└── README.md
+O_striped  →  ADOM_Vertical  →  ADOM_Horizontal  →  ADOM_Diagonal  →  X̂_clean
 ```
 
----
-
-## Requirements
-
-- **MATLAB** R2019b or later (Live Script `.mlx` format)
-- **Image Processing Toolbox** — for `imread`, `imshow`, `rgb2gray`, `im2double`, `imwrite`
-- No additional third-party toolboxes required
-
----
-
-## Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/<your-username>/<your-repo-name>.git
-cd <your-repo-name>
-```
-
-### 2. Update image paths
-
-In each `.mlx` file, update the hardcoded image path to your own image:
+This sequential pipeline is implemented in `All-destripe.mlx`, where a unified ADOM function accepts a `direction` parameter:
 
 ```matlab
-img = imread("path/to/your/Image.jpg");
-```
-
-### 3. Run a script
-
-Open any `.mlx` file in MATLAB and press **Run**. Each file is fully self-contained with the ADOM function definition and a demo section.
-
-### 4. Suggested workflow for real remote sensing images
-
-```
-Real RSI with stripe noise
-         |
-         v
-   ADOM_vert.mlx        <- If vertical stripes present
-         |
-         v
-   ADOM_hori.mlx        <- If horizontal stripes also present
-         |
-         v
-   ADOM_diag.mlx        <- If diagonal stripes also present
-         |
-         v
-      Clean RSI
-```
-
-Or use `All-destripe.mlx` for a single-script solution handling all three directions automatically.
-
----
-
-## Parameters Reference
-
-| Parameter | Description | Recommended | Effect of Increasing |
-|-----------|-------------|-------------|----------------------|
-| `lambda1` | Weight for perpendicular gradient regularization | `0.01`–`0.1` | Stronger smoothing of image texture |
-| `lambda2` | Weight for group sparsity regularization | `0.01`–`0.1` | More columns/rows/diagonals zeroed out |
-| `rho1` | ADMM penalty for Subproblem A | `1` | Tighter constraint on along-stripe gradient |
-| `rho2` | ADMM penalty for Subproblem B | `1` | Tighter constraint on perpendicular gradient |
-| `rho3` | ADMM penalty for Subproblem C | `1` | Tighter constraint on group sparsity |
-| `p` | Nesterov switch point (aggressive to conservative) | `10` | More aggressive acceleration in early iterations |
-| `tol` | Convergence tolerance | `1e-4` | Smaller = more precise, more iterations needed |
-| `max_iter` | Maximum iterations | `200` | Hard upper bound on computation time |
-
-**Recommended lambda values by noise type (from paper experiments):**
-
-| Noise Type | lambda1 | lambda2 |
-|------------|---------|---------|
-| Periodical stripes | `0.01` | `0.01` |
-| Non-Periodical stripes | `0.01` | `0.01` |
-| Broken stripes | `0.1` | `0.1` |
-| Multiplicative stripes | `0.01` | `0.01` |
-| Mixed (non-periodical + broken + wide) | `0.1` | `0.1` |
-
----
-
-## Computational Complexity
-
-| Subproblem | Operation | Per-Iteration Cost |
-|------------|-----------|-------------------|
-| A | Pixel-wise soft-thresholding | O(mn) |
-| B | Pixel-wise weighted soft-thresholding | O(mn) |
-| C | Group-wise block soft-thresholding | O(mn) |
-| S | 2D FFT + pointwise division + 2D IFFT | O(mn log mn) |
-| **Total per iteration** | | **O(mn log mn)** |
-| **Total overall** | k iterations | **O(k * mn log mn)** |
-
-- `m, n` = image height and width
-- `k` = number of iterations until convergence (at most `max_iter`)
-- The FFT denominator `Q` is **precomputed once** before the main loop, saving 3 FFT calls per iteration — a significant efficiency gain for large images
-
----
-
-## Citation
-
-If you use this code in your research, please cite the original paper:
-
-```bibtex
-@article{kim2023adom,
-  title   = {ADOM: ADMM-Based Optimization Model for Stripe Noise Removal in Remote Sensing Image},
-  author  = {Kim, Namwon and Han, Seong-Soo and Jeong, Chang-Sung},
-  journal = {IEEE Access},
-  volume  = {11},
-  pages   = {106587--106606},
-  year    = {2023},
-  doi     = {10.1109/ACCESS.2023.3319268}
-}
+destriped_v = ADOM(O_striped, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter, 'vertical');
+destriped_h = ADOM(destriped_v, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter, 'horizontal');
+destriped   = ADOM(destriped_h, lambda1, lambda2, rho1, rho2, rho3, p, tol, max_iter, 'diagonal');
 ```
 
 ---
 
-## License
+### 3.11 Implementation Files
 
-This project is for academic and educational use. Please refer to the original paper's license:  
-[Creative Commons Attribution-NonCommercial-NoDerivatives 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)
+| File | Function | Description |
+|------|----------|-------------|
+| `ADOM_vert.mlx` | `ADOM()` | Vertical stripe removal; groups = image columns |
+| `ADOM_hori.mlx` | `ADOM_Horizontal()` | Horizontal stripe removal; groups = image rows |
+| `ADOM_diag.mlx` | `ADOM()` | Diagonal stripe removal; groups = image diagonals |
+| `ADOM_2D.mlx` | `ADOM_Vertical()` + `ADOM_Horizontal()` | Sequential bidirectional destriping |
+| `ADOM_stripe.mlx` | — | Synthetic stripe noise generation and saving |
+| `ADOM_striperemoval.mlx` | `ADOM()` | Load a pre-saved striped image and apply vertical ADOM |
+| `All-destripe.mlx` | `ADOM()` (unified) | Unified ADOM supporting all directions via `direction` flag |
 
 ---
 
-## Acknowledgements
+### 3.12 Algorithm Parameters
 
-- Original ADOM algorithm by Namwon Kim, Seong-Soo Han, and Chang-Sung Jeong (Korea University / Kangwon National University)
-- This MATLAB implementation extends the original vertical-stripe model to support horizontal, diagonal, and multi-direction stripe removal
+| Parameter | Symbol | Default | Role |
+|-----------|--------|---------|------|
+| Regularization 1 | `λ₁` | 0.05 | Weight on cross-direction gradient sparsity (Subproblem B) |
+| Regularization 2 | `λ₂` | 0.10 | Weight on group sparsity (Subproblem C) |
+| ADMM Penalty 1 | `ρ₁` | 1 | Penalty for along-direction constraint |
+| ADMM Penalty 2 | `ρ₂` | 1 | Penalty for cross-direction constraint |
+| ADMM Penalty 3 | `ρ₃` | 1 | Penalty for group-structure constraint |
+| Momentum threshold | `p` | 10 | Iteration boundary between fast and stable acceleration phases |
+| Damping factor | `δ` | 0.1 | Prevents overshooting in momentum step |
+| Tolerance | `tol` | 1e-4 | Convergence criterion (relative residual change) |
+| Max iterations | `max_iter` | 200 | Hard upper bound on ADMM iterations |
+
+---
+
+##  Dataset
+
+Remote sensing images were used for testing the ADOM destriping algorithm. Synthetic stripe noise was added to clean grayscale images at a stripe density of **40%** with noise intensity uniformly sampled from **[−0.5, 0.5]**.
+
+Commonly used benchmark datasets for remote sensing destriping include:
+
+| Dataset | Sensor | Description | URL |
+|---------|--------|-------------|-----|
+| Cuprite | AVIRIS (NASA) | Hyperspectral, mineral mapping scene | [NASA AVIRIS](https://aviris.jpl.nasa.gov/) |
+| Pavia University | ROSIS (DLR) | Urban hyperspectral scene | [Hyperspectral Remote Sensing Scenes](http://www.ehu.eus/ccwintco/index.php/Hyperspectral_Remote_Sensing_Scenes) |
+| Hyperion | EO-1 (NASA) | Hyperspectral, 242 bands | [USGS EarthExplorer](https://earthexplorer.usgs.gov/) |
+| Aqua/Terra MODIS | NASA | Moderate resolution, global coverage | [NASA Earthdata](https://earthdata.nasa.gov/) |
+
+In this project, a custom local image (`Image.jpg`) was used for proof-of-concept testing with synthetic stripe noise superimposed programmatically in MATLAB. Stripe noise parameters used:
+- **Stripe ratio:** 40% of columns/rows/diagonals affected
+- **Noise intensity:** Drawn from `randn() × 0.5` (Gaussian, zero-mean)
+- **Clipping:** Output clipped to [0, 1] after adding noise
+
+---
+
+##  Results
+
+### Fig. 1: Vertical Stripe Removal
+
+| Original Clean Image | Striped Image (Vertical) | Destriped Output |
+|:--------------------:|:------------------------:|:----------------:|
+| *(insert figure)*    | *(insert figure)*        | *(insert figure)* |
+
+**Fig. 1:** Demonstration of ADOM vertical stripe removal (`ADOM_vert.mlx`). Left: clean reference image. Centre: synthetically corrupted image with 40% column-wise stripe noise. Right: ADOM destriped output.
+
+---
+
+### Fig. 2: Horizontal Stripe Removal
+
+| Original Clean Image | Striped Image (Horizontal) | Destriped Output |
+|:--------------------:|:--------------------------:|:----------------:|
+| *(insert figure)*    | *(insert figure)*          | *(insert figure)* |
+
+**Fig. 2:** Demonstration of ADOM horizontal stripe removal (`ADOM_hori.mlx`).
+
+---
+
+### Fig. 3: Diagonal Stripe Removal
+
+| Original Clean Image | Striped Image (Diagonal) | Destriped Output |
+|:--------------------:|:------------------------:|:----------------:|
+| *(insert figure)*    | *(insert figure)*        | *(insert figure)* |
+
+**Fig. 3:** Demonstration of ADOM diagonal stripe removal using diagonal group sparsity (`ADOM_diag.mlx`).
+
+---
+
+### Fig. 4: Multi-Directional Stripe Removal
+
+| Original | V + H + D Striped | Fully Destriped |
+|:--------:|:-----------------:|:---------------:|
+| *(insert figure)* | *(insert figure)* | *(insert figure)* |
+
+**Fig. 4:** Sequential application of ADOM for all three stripe directions (`All-destripe.mlx`). V = Vertical, H = Horizontal, D = Diagonal.
+
+---
+
+### Table 1: Quantitative Evaluation
+
+| Configuration | Stripe Type | PSNR (dB) ↑ | SSIM ↑ |
+|---------------|-------------|-------------|--------|
+| ADOM_vert | Vertical only | — | — |
+| ADOM_hori | Horizontal only | — | — |
+| ADOM_diag | Diagonal only | — | — |
+| ADOM_2D | Vertical + Horizontal | — | — |
+| All-destripe | V + H + Diagonal | — | — |
+
+> ⚠️ *Fill in PSNR and SSIM values from MATLAB experiments using `psnr(destriped, O)` and `ssim(destriped, O)`.*
+
+---
+
+##  Conclusion
+
+This project successfully implements and extends the ADOM framework for multi-directional stripe noise removal in remote sensing images. Beginning from the base paper (Kim et al., IEEE Access 2023), which addresses vertical stripe removal, the implementation was extended to cover horizontal, diagonal, and simultaneous multi-directional stripe noise — a more realistic and challenging scenario encountered in real satellite sensor systems.
+
+The key technical contributions of this implementation are:
+
+- **Rigorous mathematical formulation:** Stripe removal is modelled as a constrained convex optimization problem using three complementary priors — L1 gradient sparsity along the stripe direction, L1 smoothness across the stripe direction, and weighted group L2 sparsity of the stripe component.
+- **Efficient FFT-based linear solver:** The S-subproblem is solved in the Fourier domain in O(HW log HW) time, making the algorithm scalable to large remote sensing images.
+- **Adaptive weight-based detection:** Per-group adaptive weights `w_g` are updated each iteration based on the residual dynamics, enabling precise discrimination between genuine image edges and stripe patterns even when they have similar gradient magnitudes.
+- **Accelerated convergence:** Evidence-based starting point control (Nesterov-type momentum schedule) and momentum-based step-size control with damping together reduce the iteration count significantly compared to vanilla ADMM.
+- **Unified multi-direction pipeline:** A single parameterized ADOM function supports all stripe directions via the `direction` flag, and sequential composition achieves full multi-directional destriping.
+
+Future directions include: extending ADOM to hyperspectral (3D) image cubes exploiting inter-band correlation, automated parameter tuning using quality metrics (PSNR, SSIM), and benchmarking against deep learning destripers such as DnCNN and Wavelet-DNN on standard remote sensing datasets.
+
+---
+
+##  References
+
+**[1]** N. Kim, S.-S. Han, and C.-S. Jeong, "ADOM: ADMM-Based Optimization Model for Stripe Noise Removal in Remote Sensing Image," *IEEE Access*, vol. 11, pp. 106587–106606, 2023. DOI: [10.1109/ACCESS.2023.3320190](https://ieeexplore.ieee.org/document/10262317)
+
+**[2]** S. Boyd, N. Parikh, E. Chu, B. Peleato, and J. Eckstein, "Distributed Optimization and Statistical Learning via the Alternating Direction Method of Multipliers," *Foundations and Trends in Machine Learning*, vol. 3, no. 1, pp. 1–122, 2011.
+
+**[3]** Y. Chang, L. Yan, T. Wu, and S. Zhong, "Remote Sensing Image Stripe Noise Removal: From Image Decomposition Perspective," *IEEE Transactions on Geoscience and Remote Sensing*, vol. 54, no. 12, pp. 7018–7031, 2016.
+
+**[4]** A. Beck and M. Teboulle, "A Fast Iterative Shrinkage-Thresholding Algorithm for Linear Inverse Problems," *SIAM Journal on Imaging Sciences*, vol. 2, no. 1, pp. 183–202, 2009. *(Foundation for Nesterov-type momentum used in ADOM)*
+
+**[5]** J. Guan, R. Lai, and A. Xiong, "Wavelet Deep Neural Network for Stripe Noise Removal," *IEEE Access*, vol. 7, pp. 44544–44554, 2019.
+
+**[6]** NASA Jet Propulsion Laboratory, *AVIRIS Cuprite Dataset*. [Online]. Available: https://aviris.jpl.nasa.gov/
+
+**[7]** The MathWorks, Inc., *MATLAB R2023b Documentation*. [Online]. Available: https://www.mathworks.com/help/matlab/
+
+**[8]** namwonss (N. Kim), *ADOM Official GitHub Repository*, 2023. [Online]. Available: https://github.com/namwonss/ADOM
+
+---
+
+> *This project was developed as part of the MFC3/MFC4 curriculum at Amrita Vishwa Vidyapeetham.*
