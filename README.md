@@ -41,16 +41,16 @@ Stripe noise is a common and detrimental artifact in remote sensing images (RSI)
 
 Remote sensing images (RSI) acquired by satellite and airborne sensors are indispensable tools in modern science and engineering. They support a wide range of critical real-world applications including Earth observation, land-use and land-cover classification, urban planning, agricultural monitoring, climate change analysis, natural disaster response, and environmental surveillance. Satellites such as NASA's Landsat, ESA's Sentinel series, and hyperspectral platforms like EO-1 Hyperion and MODIS continuously generate large volumes of image data that form the backbone of geospatial intelligence.
 
-However, the quality of remote sensing images is frequently compromised by **stripe noise** — a form of structured, systematic degradation that manifests as bright or dark bands running vertically, horizontally, or diagonally across the image. This noise type is distinct from random (Gaussian) noise because it is spatially correlated, direction-dependent, and often non-periodic and non-uniform in intensity.
+However, the quality of remote sensing images is frequently compromised by **stripe noise** a form of structured, systematic degradation that manifests as bright or dark bands running vertically, horizontally, or diagonally across the image. This noise type is distinct from random (Gaussian) noise because it is spatially correlated, direction-dependent, and often non-periodic and non-uniform in intensity.
 
 ### Origin and Nature of Stripe Noise
 
-Stripe noise in RSI arises primarily from hardware-level imperfections in the imaging sensors. Modern satellites use **push-broom** or **whisk-broom** scanning systems, where individual detector elements (pixels in the sensor array) scan the Earth's surface in parallel. Each detector element has its own gain and bias characteristics, and even small calibration differences between detectors — caused by temperature variations, aging electronics, or manufacturing tolerances — appear as persistent stripes in the final image.
+Stripe noise in RSI arises primarily from hardware-level imperfections in the imaging sensors. Modern satellites use **push-broom** or **whisk-broom** scanning systems, where individual detector elements (pixels in the sensor array) scan the Earth's surface in parallel. Each detector element has its own gain and bias characteristics, and even small calibration differences between detectors caused by temperature variations, aging electronics, or manufacturing tolerances — appear as persistent stripes in the final image.
 
 The key properties that make stripe noise particularly difficult to remove are:
 
 - **Non-periodicity:** Stripes do not occur at fixed, regular intervals. They appear randomly across different columns, rows, or diagonals.
-- **Non-uniformity:** The intensity of each stripe varies independently — some stripes are faint while others are highly prominent.
+- **Non-uniformity:** The intensity of each stripe varies independently some stripes are faint while others are highly prominent.
 - **Structural similarity to image content:** Stripe noise can closely mimic genuine image structures such as roads, field boundaries, and building edges, making it difficult to distinguish noise from signal without sophisticated models.
 - **Multi-directionality:** Stripes can appear simultaneously in vertical, horizontal, and diagonal directions, especially in multi-sensor or multi-pass acquisition systems.
 
@@ -69,7 +69,7 @@ Several categories of destriping methods have been proposed in the literature, e
 
 **1. Filter-Based Methods:** Simple spatial or frequency-domain filters (e.g., notch filters, Fourier filtering) can suppress periodic stripes but fail on non-periodic, non-uniform stripe patterns because the stripe frequency overlaps with genuine image content.
 
-**2. Statistics-Based Methods (Moment Matching, Histogram Equalization):** These approaches equalize the statistical properties (mean, variance) across detector elements. They are computationally fast but assume stripes are stationary and purely multiplicative/additive in a fixed statistical sense — an assumption that breaks down for complex scenes.
+**2. Statistics-Based Methods (Moment Matching, Histogram Equalization):** These approaches equalize the statistical properties (mean, variance) across detector elements. They are computationally fast but assume stripes are stationary and purely multiplicative/additive in a fixed statistical sense an assumption that breaks down for complex scenes.
 
 **3. Variational/Optimization-Based Methods (e.g., UTV, GSR, DLS, LRHP):** These formulate destriping as a regularized optimization problem using priors such as total variation (TV) or low-rank structure. While effective, many of these methods are computationally expensive and struggle to separate stripe noise from fine image details such as edges and textures with similar directionality.
 
@@ -79,9 +79,9 @@ Several categories of destriping methods have been proposed in the literature, e
 
 The ADOM framework, proposed by Kim, Han, and Jeong (IEEE Access, 2023), addresses the above limitations by:
 
-1. **Formulating stripe noise removal as a convex optimization problem** that explicitly models the directional properties of stripe noise — its smoothness along the stripe direction and sparsity across the stripe direction.
+1. **Formulating stripe noise removal as a convex optimization problem** that explicitly models the directional properties of stripe noise its smoothness along the stripe direction and sparsity across the stripe direction.
 2. **Introducing adaptive weighted norms** that dynamically adjust per-group (per-column, per-row, or per-diagonal) weights based on the residual between successive estimates, enabling the model to distinguish genuine image edges from stripe noise even when they have similar gradient magnitudes.
-3. **Accelerating convergence with two novel control strategies** — evidence-based starting point control and momentum-based step-size control — that together significantly reduce the number of ADMM iterations needed for convergence while maintaining solution quality.
+3. **Accelerating convergence with two novel control strategies** — evidence-based starting point control and momentum-based step-size control that together significantly reduce the number of ADMM iterations needed for convergence while maintaining solution quality.
 
 This project implements the ADOM framework in MATLAB and extends it to handle all three stripe directions — vertical, horizontal, and diagonal — both independently and in a sequential multi-directional pipeline. This makes it applicable to the full range of stripe noise corruption patterns encountered in real remote sensing sensor systems.
 
@@ -112,7 +112,7 @@ This is an ill-posed inverse problem because infinitely many pairs (X, S) can pr
 Two key structural properties of stripe noise are exploited as regularization priors:
 
 **Prior 1 — Gradient Sparsity Along the Stripe Direction (L1 norm):**
-Stripe noise is piecewise constant along the stripe direction. For vertical stripes, the stripe signal does not change in the vertical (y) direction — i.e., the vertical gradient of S is sparse (mostly zero). Mathematically:
+Stripe noise is piecewise constant along the stripe direction. For vertical stripes, the stripe signal does not change in the vertical (y) direction i.e., the vertical gradient of S is sparse (mostly zero). Mathematically:
 
 ```
 ||∇_along S||_1  is small
@@ -517,11 +517,12 @@ In this project, a custom local image (`Image.jpg`) was used for proof-of-concep
 
 ### Fig. 1: Vertical Stripe Removal
 
-| Original Clean Image | Striped Image (Vertical) | Destriped Output |
-|:--------------------:|:------------------------:|:----------------:|
-| *(insert figure)*    | *(insert figure)*        | *(insert figure)* |
+<p align="center">
+  <img src="result_vert.jpeg" width="700">
+</p>
 
-**Fig. 1:** Demonstration of ADOM vertical stripe removal (`ADOM_vert.mlx`). Left: clean reference image. Centre: synthetically corrupted image with 40% column-wise stripe noise. Right: ADOM destriped output.
+
+**Fig. 1:** Demonstration of ADOM vertical stripe removal (`ADOM_vert.mlx`). clean reference image. synthetically corrupted image with 40% column-wise stripe noise. ADOM destriped output.
 
 ---
 
