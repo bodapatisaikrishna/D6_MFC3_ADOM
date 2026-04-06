@@ -525,48 +525,104 @@ In this project, a custom local image (`Image.jpg`) was used for proof-of-concep
 **Fig. 1:** Demonstration of ADOM vertical stripe removal (`ADOM_vert.mlx`). clean reference image. synthetically corrupted image with 40% column-wise stripe noise. ADOM destriped output.
 
 ---
+### Fig. 2: Vertical Stripe Removal Intensity Profile Comparison
 
-### Fig. 2: Horizontal Stripe Removal
+<p align="center">
+  <img src="result_vert1.jpeg" width="700">
+</p>
 
-| Original Clean Image | Striped Image (Horizontal) | Destriped Output |
-|:--------------------:|:--------------------------:|:----------------:|
-| *(insert figure)*    | *(insert figure)*          | *(insert figure)* |
 
-**Fig. 2:** Demonstration of ADOM horizontal stripe removal (`ADOM_hori.mlx`).
+**Fig. 2:**Demonstration of the effectiveness of a destriping vertical stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+---
+### Fig. 3: Horizontal Stripe Removal
+
+<p align="center">
+  <img src="result_hori.jpeg" width="700">
+</p>
+
+**Fig. 3:** Demonstration of ADOM horizontal stripe removal (`ADOM_hori.mlx`).
+
+---
+### Fig. 4: Horizontal Stripe Removal Intensity Profile Comparison
+
+<p align="center">
+  <img src="result_hori1.jpeg" width="700">
+</p>
+
+
+**Fig. 4:**Demonstration of the effectiveness of a destriping horizontal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+
+---
+### Fig. 5: Diagonal Stripe Removal
+
+<p align="center">
+  <img src="result_diag.jpeg" width="700">
+</p>
+
+**Fig. 5:** Demonstration of ADOM diagonal stripe removal using diagonal group sparsity (`ADOM_diag.mlx`).
+---
+
+### Fig. 6: Diagonal Stripe Removal Intensity Profile Comparison
+
+<p align="center">
+  <img src="result_diag1.jpeg" width="700">
+</p>
+
+
+**Fig. 6:**Demonstration of the effectiveness of a destriping diagonal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+
+---
+### Fig. 7: Bidirectional (Horizontal,Vertical) Stripe Removal
+
+<p align="center">
+  <img src="result_bi.jpeg" width="700">
+</p>
+
+**Fig. 7:** Demonstration of ADOM stripe removal of horizontal and vertical stripes(`ADOM_2D.mlx`).
+---
+
+### Fig. 8: Bidirectional (Horizontal,Vertical) Stripe Removal Intensity Profile Comparison
+
+<p align="center">
+  <img src="result_bi1.jpeg" width="700">
+</p>
+
+
+**Fig. 8:**Demonstration of the effectiveness of a destriping 2D stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+
+---
+### Fig. 9: Multi-Directional Stripe Removal
+
+<p align="center">
+  <img src="result_multi_str.jpeg" width="700">
+</p>
+
+**Fig. 9:** Sequential application of ADOM for all three stripe directions (`All-destripe.mlx`). V = Vertical, H = Horizontal, D = Diagonal.
 
 ---
 
-### Fig. 3: Diagonal Stripe Removal
+### Fig. 10: Multi-Directional Stripe Removal Intensity Profile Comparison
 
-| Original Clean Image | Striped Image (Diagonal) | Destriped Output |
-|:--------------------:|:------------------------:|:----------------:|
-| *(insert figure)*    | *(insert figure)*        | *(insert figure)* |
+<p align="center">
+  <img src="result_multi_str1.jpeg" width="700">
+</p>
 
-**Fig. 3:** Demonstration of ADOM diagonal stripe removal using diagonal group sparsity (`ADOM_diag.mlx`).
 
----
-
-### Fig. 4: Multi-Directional Stripe Removal
-
-| Original | V + H + D Striped | Fully Destriped |
-|:--------:|:-----------------:|:---------------:|
-| *(insert figure)* | *(insert figure)* | *(insert figure)* |
-
-**Fig. 4:** Sequential application of ADOM for all three stripe directions (`All-destripe.mlx`). V = Vertical, H = Horizontal, D = Diagonal.
+**Fig. 10:**Demonstration of the effectiveness of a destriping horizontal,vertical,diagonal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
 
 ---
+
 
 ### Table 1: Quantitative Evaluation
 
 | Configuration | Stripe Type | PSNR (dB) ↑ | SSIM ↑ |
 |---------------|-------------|-------------|--------|
-| ADOM_vert | Vertical only | — | — |
-| ADOM_hori | Horizontal only | — | — |
-| ADOM_diag | Diagonal only | — | — |
-| ADOM_2D | Vertical + Horizontal | — | — |
-| All-destripe | V + H + Diagonal | — | — |
+| ADOM_vert | Vertical only | 16.1844 | 0.6722 |
+| ADOM_hori | Horizontal only | 16.5630 | 0.6589 |
+| ADOM_diag | Diagonal only | 12.8410 | 0.5856 |
+| ADOM_2D | Vertical + Horizontal | 13.1810 | 0.5815 |
+| All-destripe | V + H + Diagonal | 18.113 | 0.74092 |
 
-> ⚠️ *Fill in PSNR and SSIM values from MATLAB experiments using `psnr(destriped, O)` and `ssim(destriped, O)`.*
 
 ---
 
