@@ -532,7 +532,7 @@ In this project, a custom local image (`Image.jpg`) was used for proof-of-concep
 </p>
 
 
-**Fig. 2:**Demonstration of the effectiveness of a destriping vertical stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+**Fig. 2:** Demonstration of the effectiveness of a destriping vertical stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
 ---
 ### Fig. 3: Horizontal Stripe Removal
 
@@ -550,7 +550,7 @@ In this project, a custom local image (`Image.jpg`) was used for proof-of-concep
 </p>
 
 
-**Fig. 4:**Demonstration of the effectiveness of a destriping horizontal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+**Fig. 4:** Demonstration of the effectiveness of a destriping horizontal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
 
 ---
 ### Fig. 5: Diagonal Stripe Removal
@@ -569,7 +569,7 @@ In this project, a custom local image (`Image.jpg`) was used for proof-of-concep
 </p>
 
 
-**Fig. 6:**Demonstration of the effectiveness of a destriping diagonal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+**Fig. 6:** Demonstration of the effectiveness of a destriping diagonal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
 
 ---
 ### Fig. 7: Bidirectional (Horizontal,Vertical) Stripe Removal
@@ -588,7 +588,7 @@ In this project, a custom local image (`Image.jpg`) was used for proof-of-concep
 </p>
 
 
-**Fig. 8:**Demonstration of the effectiveness of a destriping 2D stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+**Fig. 8:** Demonstration of the effectiveness of a destriping 2D stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
 
 ---
 ### Fig. 9: Multi-Directional Stripe Removal
@@ -608,7 +608,7 @@ In this project, a custom local image (`Image.jpg`) was used for proof-of-concep
 </p>
 
 
-**Fig. 10:**Demonstration of the effectiveness of a destriping horizontal,vertical,diagonal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
+**Fig. 10:** Demonstration of the effectiveness of a destriping horizontal,vertical,diagonal stripes, showing that the destriped pixel intensity profile successfully removes severe noise to closely match the original image.
 
 ---
 
